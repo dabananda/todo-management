@@ -1,5 +1,6 @@
 package com.dabananda.todomanagement.service.impl;
 
+import com.dabananda.todomanagement.dto.JwtAuthResponse;
 import com.dabananda.todomanagement.dto.LoginDto;
 import com.dabananda.todomanagement.dto.RegisterDto;
 import com.dabananda.todomanagement.entity.Role;
@@ -19,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -58,13 +60,29 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String login(LoginDto loginDto) {
+    public JwtAuthResponse login(LoginDto loginDto) {
         Authentication authentication =  authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                 loginDto.getUsernameOrEmail(),
                 loginDto.getPassword()
         ));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = jwtTokenProvider.generateJwtToken(authentication);
-        return token;
+        java.util.Optional<User> userOptional = userRepository.findByUsernameOrEmail(loginDto.getUsernameOrEmail(), loginDto.getUsernameOrEmail());
+        
+        String role = null;
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            Optional<Role> optionalRole = user.getRoles().stream().findFirst();
+            if (optionalRole.isPresent()) {
+                com.dabananda.todomanagement.entity.Role userRole = optionalRole.get();
+                role = userRole.getName();
+            }
+        }
+        
+        JwtAuthResponse jwtAuthResponse = new JwtAuthResponse();
+        jwtAuthResponse.setRole(role);
+        jwtAuthResponse.setAccessToken(token);
+        
+        return jwtAuthResponse;
     }
 }
